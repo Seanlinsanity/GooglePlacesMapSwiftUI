@@ -9,53 +9,116 @@
 import UIKit
 import MapKit
 import LBTATools
+import Combine
 
 extension MainViewController: MKMapViewDelegate {
     func mapView(_ mapView: MKMapView, viewFor annotation: MKAnnotation) -> MKAnnotationView? {
-        let annotationView = MKPinAnnotationView(annotation: annotation, reuseIdentifier: "id")
-        annotationView.canShowCallout = true
-        annotationView.image = UIImage(named: "marker")
-        return annotationView
+        
+        if (annotation is MKPointAnnotation) {
+            let annotationView = MKPinAnnotationView(annotation: annotation, reuseIdentifier: "id")
+            annotationView.canShowCallout = true
+            return annotationView
+        }
+        return nil
     }
+    
+    func mapView(_ mapView: MKMapView, didSelect view: MKAnnotationView) {
+        guard let annotation = view.annotation as? CustomAnnotation else { return }
+        guard let index = self.locationsController.items.firstIndex(where: {$0.name == annotation.mapItem?.name}) else { return }
+        self.locationsController.collectionView.scrollToItem(at: [0, index], at: .centeredHorizontally, animated: true)
+    }
+    
 }
 
-class MainViewController: UIViewController {
+class MainViewController: UIViewController, CLLocationManagerDelegate {
     let mapView = MKMapView()
-
+    let searchTextField = UITextField(placeholder: "Search query...")
+    var cancellable: AnyCancellable?
+    let locationManager = CLLocationManager()
+    let locationsController = LocationsCarouselController(scrollDirection: .horizontal)
+    
     override func viewDidLoad() {
         super.viewDidLoad()
+        requestUserLocation()
         mapView.delegate = self
         setupView()
         setupRegionForMap()
-        performLocationSearch()
+        setupSearchBar()
+        setupLocationsCarousel()
+    }
+    
+    fileprivate func requestUserLocation() {
+        locationManager.requestWhenInUseAuthorization()
+        locationManager.delegate = self
+    }
+    
+    func locationManager(_ manager: CLLocationManager, didChangeAuthorization status: CLAuthorizationStatus) {
+        switch status {
+        case .authorizedWhenInUse:
+            print("Received authorization of user location")
+            // request for where the user actually is
+            locationManager.startUpdatingLocation()
+        default:
+            print("Failed to authorize")
+        }
+    }
+    
+    func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
+        guard let firstLocation = locations.first else { return }
+        mapView.setRegion(.init(center: firstLocation.coordinate, span: .init(latitudeDelta: 0.1, longitudeDelta: 0.1)), animated: false)
+        
+//        locationManager.stopUpdatingLocation()
     }
     
     fileprivate func performLocationSearch() {
         let request = MKLocalSearch.Request()
         request.region = customRegion()
-        request.naturalLanguageQuery = "Apple"
+        request.naturalLanguageQuery = self.searchTextField.text
         let localSearch = MKLocalSearch(request: request)
         localSearch.start { (res, err) in
             if let err = err {
                 print("Failed local search: ", err)
                 return
             }
-            
             // Success
+            self.mapView.removeAnnotations(self.mapView.annotations)
+            self.locationsController.items.removeAll()
+
             res?.mapItems.forEach({ (mapItem) in
-                print(self.addressString(mapItem.placemark))
-                
+                print(mapItem.address())
                 self.addAnnotation(mapItem: mapItem)
+                self.locationsController.items.append(mapItem)
             })
+            
+            if res?.mapItems.count != 0 { self.locationsController.collectionView.scrollToItem(at: [0, 0], at: .centeredHorizontally, animated: true)
+            }
             self.mapView.showAnnotations(self.mapView.annotations, animated: true)
         }
     }
     
     fileprivate func addAnnotation(mapItem: MKMapItem) {
-        let annotation = MKPointAnnotation()
+        let annotation = CustomAnnotation()
+        annotation.mapItem = mapItem
         annotation.coordinate = mapItem.placemark.coordinate
         annotation.title = mapItem.name
         mapView.addAnnotation(annotation)
+    }
+    
+    fileprivate func setupSearchBar() {
+        let whiteContainerView = UIView(backgroundColor: .white)
+        view.addSubview(whiteContainerView)
+        whiteContainerView.anchor(top: view.safeAreaLayoutGuide.topAnchor, leading: view.leadingAnchor, bottom: nil, trailing: view.trailingAnchor, padding: .init(top: 0, left: 16, bottom: 0, right: 32))
+        whiteContainerView.stack(searchTextField).withMargins(.allSides(16))
+        
+        //Search Throttling
+        self.cancellable = NotificationCenter.default
+            .publisher(for: UITextField.textDidChangeNotification, object: searchTextField)
+            .debounce(for: .milliseconds(500), scheduler: RunLoop.main)
+            .sink(receiveValue: { [weak self] (notification) in
+                let tf = notification.object as? UITextField
+                print("search text: \(tf?.text ?? "")")
+                self?.performLocationSearch()
+            })
     }
     
     private func customRegion() -> MKCoordinateRegion{
@@ -65,6 +128,13 @@ class MainViewController: UIViewController {
         return region
     }
     
+    fileprivate func setupLocationsCarousel() {
+        let locationsView = locationsController.view!
+        locationsController.mainController = self
+        view.addSubview(locationsView)
+        locationsView.anchor(top: nil, leading: view.leadingAnchor, bottom: view.safeAreaLayoutGuide.bottomAnchor, trailing: view.trailingAnchor, size: .init(width: 0, height: 150))
+    }
+    
     private func setupRegionForMap() {
         mapView.setRegion(customRegion(), animated: true)
     }
@@ -72,31 +142,13 @@ class MainViewController: UIViewController {
     private func setupView() {
         view.addSubview(mapView)
         mapView.fillSuperview()
+        mapView.showsUserLocation = true
     }
     
-    private func addressString(_ placemark: MKPlacemark) -> String {
-        var addressString = ""
-        if placemark.subThoroughfare != nil {
-            addressString = placemark.subThoroughfare! + " "
-        }
-        if placemark.thoroughfare != nil {
-            addressString += placemark.thoroughfare! + ", "
-        }
-        if placemark.postalCode != nil {
-            addressString += placemark.postalCode! + " "
-        }
-        if placemark.locality != nil {
-            addressString += placemark.locality! + ", "
-        }
-        if placemark.administrativeArea != nil {
-            addressString += placemark.administrativeArea! + " "
-        }
-        if placemark.country != nil {
-            addressString += placemark.country!
-        }
-        return addressString
-    }
-    
+}
+
+class CustomAnnotation: MKPointAnnotation {
+    var mapItem: MKMapItem?
 }
 
 import SwiftUI
