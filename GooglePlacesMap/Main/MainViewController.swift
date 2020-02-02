@@ -45,6 +45,7 @@ class MainViewController: UIViewController, CLLocationManagerDelegate {
         setupRegionForMap()
         setupSearchBar()
         setupLocationsCarousel()
+        navigationController?.pushViewController(DirectionsController(), animated: true)
     }
     
     fileprivate func requestUserLocation() {
