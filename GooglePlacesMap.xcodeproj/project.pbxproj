@@ -16,6 +16,7 @@
 		142974CC23E6E594002D7558 /* MapSearchingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 142974CB23E6E594002D7558 /* MapSearchingView.swift */; };
 		1451853623DEE5320043E62F /* MKMapItem+Address.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1451853523DEE5320043E62F /* MKMapItem+Address.swift */; };
 		1451853823DEE5400043E62F /* LocationsCarouselController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1451853723DEE5400043E62F /* LocationsCarouselController.swift */; };
+		14A577BE23F80B540085EA90 /* DirectionSearchView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 14A577BD23F80B540085EA90 /* DirectionSearchView.swift */; };
 		14FF960223DAE7020096F988 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 14FF960123DAE7020096F988 /* AppDelegate.swift */; };
 		14FF960423DAE7020096F988 /* SceneDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 14FF960323DAE7020096F988 /* SceneDelegate.swift */; };
 		14FF960623DAE7020096F988 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 14FF960523DAE7020096F988 /* ContentView.swift */; };
@@ -36,6 +37,7 @@
 		142974CB23E6E594002D7558 /* MapSearchingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MapSearchingView.swift; sourceTree = "<group>"; };
 		1451853523DEE5320043E62F /* MKMapItem+Address.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = "MKMapItem+Address.swift"; sourceTree = "<group>"; };
 		1451853723DEE5400043E62F /* LocationsCarouselController.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = LocationsCarouselController.swift; sourceTree = "<group>"; };
+		14A577BD23F80B540085EA90 /* DirectionSearchView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DirectionSearchView.swift; sourceTree = "<group>"; };
 		14FF95FE23DAE7020096F988 /* GooglePlacesMap.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = GooglePlacesMap.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		14FF960123DAE7020096F988 /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
 		14FF960323DAE7020096F988 /* SceneDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SceneDelegate.swift; sourceTree = "<group>"; };
@@ -77,6 +79,7 @@
 			isa = PBXGroup;
 			children = (
 				142974CB23E6E594002D7558 /* MapSearchingView.swift */,
+				14A577BD23F80B540085EA90 /* DirectionSearchView.swift */,
 			);
 			path = SwiftUIComponent;
 			sourceTree = "<group>";
@@ -293,6 +296,7 @@
 				142974C123E57D12002D7558 /* RouteHeader.swift in Sources */,
 				14FF960623DAE7020096F988 /* ContentView.swift in Sources */,
 				142974C823E6E38E002D7558 /* PlacesController.swift in Sources */,
+				14A577BE23F80B540085EA90 /* DirectionSearchView.swift in Sources */,
 				14FF961723DAE7DF0096F988 /* MainViewController.swift in Sources */,
 				142974C923E6E38E002D7558 /* CustomCallout.swift in Sources */,
 				142974CC23E6E594002D7558 /* MapSearchingView.swift in Sources */,

@@ -14,9 +14,32 @@ struct MapView: UIViewRepresentable {
     var annotations = [MKAnnotation]()
     let mapView = MKMapView()
     var selectItem: MKMapItem?
+    var currentLocation = CLLocationCoordinate2DMake(37.7666, -122.427290)
+    
+    class Coordinator: NSObject, MKMapViewDelegate {
+        init(mapView: MKMapView) {
+            super.init()
+            mapView.delegate = self
+        }
+        
+        func mapView(_ mapView: MKMapView, viewFor annotation: MKAnnotation) -> MKAnnotationView? {
+            if !(annotation is MKPointAnnotation) {
+                return nil
+            }
+            
+            let pinAnnotationView = MKPinAnnotationView(annotation: annotation, reuseIdentifier: "id")
+            pinAnnotationView.canShowCallout = true
+            return pinAnnotationView
+        }
+    }
+    
+    func makeCoordinator() -> MapView.Coordinator {
+        return Coordinator(mapView: mapView)
+    }
     
     func makeUIView(context: UIViewRepresentableContext<MapView>) -> MKMapView {
         setupRegionForMap()
+        mapView.showsUserLocation = true
         return mapView
     }
     
@@ -32,6 +55,10 @@ struct MapView: UIViewRepresentable {
     }
     
     func updateUIView(_ uiView: MKMapView, context: UIViewRepresentableContext<MapView>) {
+        let span = MKCoordinateSpan(latitudeDelta: 0.1, longitudeDelta: 0.1)
+        let region = MKCoordinateRegion(center: currentLocation, span: span)
+        uiView.setRegion(region, animated: false)
+        
         if annotations.isEmpty {
             uiView.removeAnnotations(uiView.annotations)
             return
@@ -63,7 +90,7 @@ struct MapView: UIViewRepresentable {
     typealias UIViewType = MKMapView
 }
 
-class MapSearchingViewModel: ObservableObject {
+class MapSearchingViewModel:NSObject, ObservableObject, CLLocationManagerDelegate {
     @Published var annotations = [MKAnnotation]()
     @Published var isSearching = false
     @Published var searchQuery = "" {
@@ -73,17 +100,53 @@ class MapSearchingViewModel: ObservableObject {
     }
     @Published var mapItems = [MKMapItem]()
     @Published var selectedItem: MKMapItem?
+    @Published var currentLocation = CLLocationCoordinate2DMake(37.7666, -122.427290)
+    @Published var keyboardHeight: CGFloat = 0
 
     var cancellabe: AnyCancellable?
+    let locationManager = CLLocationManager()
     
-    init() {
+    override init() {
+        super.init()
         cancellabe = $searchQuery.debounce(for: .milliseconds(500), scheduler: RunLoop.main)
             .sink(receiveValue: { [weak self] (query) in
                 self?.performSearch(query: query)
             })
+        listenForKeyboardNotifications()
+        locationManager.delegate = self
+        locationManager.requestWhenInUseAuthorization()
+    }
+    
+    func locationManager(_ manager: CLLocationManager, didChangeAuthorization status: CLAuthorizationStatus) {
+        if status == .authorizedWhenInUse {
+            locationManager.startUpdatingLocation()
+        }
+    }
+    
+    func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
+        guard let fisrtLocation = locations.first else { return }
+        currentLocation = fisrtLocation.coordinate
+    }
+    
+    fileprivate func listenForKeyboardNotifications() {
+        NotificationCenter.default.addObserver(forName: UIResponder.keyboardWillShowNotification, object: nil, queue: .main) { [weak self] (notification) in
+            guard let value = notification.userInfo?[UIResponder.keyboardFrameEndUserInfoKey] as? NSValue else { return }
+            let keyboardFrame = value.cgRectValue
+            let window = UIApplication.shared.windows.filter({$0.isKeyWindow}).first
+            
+            withAnimation(.easeOut(duration: 0.25)) {
+                self?.keyboardHeight = keyboardFrame.height - window!.safeAreaInsets.bottom
+            }
+        }
+        
+        NotificationCenter.default.addObserver(forName: UIResponder.keyboardWillHideNotification, object: nil, queue: .main) { [weak self] (notification) in
+            withAnimation(.easeOut(duration: 0.25)) {
+                self?.keyboardHeight = 0
+            }
+        }
     }
 
-    func performSearch(query: String) {
+    fileprivate func performSearch(query: String) {
         isSearching = true
         let request = MKLocalSearch.Request()
         request.naturalLanguageQuery = query
@@ -109,7 +172,7 @@ struct MapSearchingView: View {
     
     var body: some View {
         ZStack(alignment: .top) {
-            MapView(annotations: viewModel.annotations, selectItem: viewModel.selectedItem).edgesIgnoringSafeArea(.all)
+            MapView(annotations: viewModel.annotations, selectItem: viewModel.selectedItem, currentLocation:  viewModel.currentLocation).edgesIgnoringSafeArea(.all)
             VStack(spacing: 12) {
                 HStack {
                     TextField("Search terms", text: $viewModel.searchQuery)
@@ -117,8 +180,8 @@ struct MapSearchingView: View {
                         .padding(.vertical, 12)
                         .background(Color.white)
                     
-                }.shadow(radius: 3)
-                    .padding()
+                }.padding()
+                
                 if (viewModel.isSearching) {
                     Text("Searching....")
                 }
@@ -129,7 +192,6 @@ struct MapSearchingView: View {
                     HStack(spacing: 16) {
                         ForEach(viewModel.mapItems, id: \.self) { item in
                             Button(action: {
-                                print(item.name ?? "")
                                 self.viewModel.selectedItem = item
                             }) {
                                 VStack(alignment: .leading, spacing: 4) {
@@ -145,6 +207,8 @@ struct MapSearchingView: View {
                         }
                     }.padding(.horizontal, 16)
                 }.shadow(radius: 5)
+                
+                Spacer().frame(height: viewModel.keyboardHeight)
             }
         }
     }
